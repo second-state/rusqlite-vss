@@ -70,19 +70,31 @@ fn vector_to_blob(vector: &[f32]) -> Vec<u8> {
 }
 
 pub fn add_point(conn: &Connection, name: &str, points: &[Point]) -> rusqlite::Result<Vec<u64>> {
-    let mut vector_stmt = conn.prepare(&format!(
-        "INSERT INTO {}(rowid,point) VALUES (?1, vector_from_raw(?2))",
-        name
-    ))?;
+    let mut check_stmt = conn
+        .prepare(&format!("SELECT rowid FROM {} WHERE rowid = ?1", name))
+        .unwrap();
 
-    let mut payload_stmt = conn.prepare(&format!(
-        "INSERT OR REPLACE INTO {}_payload(rowid,payload) VALUES (?1, ?2)",
-        name
-    ))?;
+    let mut vector_stmt = conn
+        .prepare(&format!(
+            "INSERT INTO {}(rowid,point) VALUES (?1, vector_from_raw(?2))",
+            name
+        ))
+        .unwrap();
+
+    let mut payload_stmt = conn
+        .prepare(&format!(
+            "INSERT OR REPLACE INTO {}_payload(rowid,payload) VALUES (?1, ?2)",
+            name
+        ))
+        .unwrap();
 
     let mut success_id = vec![];
 
     for point in points {
+        if check_stmt.exists(params![point.id])? {
+            delete_points(conn, name, vec![point.id])?;
+        }
+
         let raw = vector_to_blob(&point.vector);
         vector_stmt.execute(params![point.id as i64, raw])?;
 
@@ -245,6 +257,9 @@ fn test_points_base() {
     }
     let r = add_point(&conn, "test_vss", &points).unwrap();
     assert_eq!(r, vec![1, 2, 3, 4, 5, 6]);
+
+    let r = add_point(&conn, "test_vss", &points[1..]).unwrap();
+    assert_eq!(r, vec![2, 3, 4, 5, 6]);
 
     let mut r = get_points(&conn, "test_vss", vec![1, 2, 3]).unwrap();
     assert_eq!(r.len(), 3);
