@@ -37,6 +37,7 @@ pub async fn create_collections(
 ) -> impl IntoResponse {
     let conn = db.lock().await;
     if let Err(e) = store::create_collections(&conn, &name, create_conllections.vectors.size) {
+        log::error!("Failed to create collection: {}", e);
         return (
             axum::http::StatusCode::CONFLICT,
             Json(CreateConllectionsResult {
@@ -80,14 +81,17 @@ pub async fn get_collections_info(
                 error: None,
             }),
         ),
-        Err(e) => (
-            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-            Json(GetCollectionsResult {
-                result: CollectionsInfo { points_count: 0 },
-                status: None,
-                error: Some(e.to_string()),
-            }),
-        ),
+        Err(e) => {
+            log::error!("Failed to get collection info: {}", e);
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                Json(GetCollectionsResult {
+                    result: CollectionsInfo { points_count: 0 },
+                    status: None,
+                    error: Some(e.to_string()),
+                }),
+            )
+        }
     }
 }
 
@@ -121,14 +125,17 @@ pub async fn add_points(
                     error: None,
                 }),
             ),
-            Err(e) => (
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                Json(AddPointsResult {
-                    result: None,
-                    status: None,
-                    error: Some(e.to_string()),
-                }),
-            ),
+            Err(e) => {
+                log::error!("Failed to add points: {}", e);
+                (
+                    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(AddPointsResult {
+                        result: None,
+                        status: None,
+                        error: Some(e.to_string()),
+                    }),
+                )
+            }
         }
     }
 }
