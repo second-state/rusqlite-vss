@@ -181,8 +181,7 @@ pub async fn get_points(
 pub type GetPointResult = APIResult<Option<Point>>;
 
 pub async fn get_point(
-    Path(name): Path<String>,
-    Path(point_id): Path<u64>,
+    Path((name, point_id)): Path<(String, u64)>,
     State(db): State<Arc<Mutex<rusqlite::Connection>>>,
 ) -> impl IntoResponse {
     let conn: tokio::sync::MutexGuard<rusqlite::Connection> = db.lock().await;
