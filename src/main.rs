@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use axum::{
+    extract::DefaultBodyLimit,
     routing::{delete, get, post, put},
     Router,
 };
@@ -36,6 +37,7 @@ async fn main() -> anyhow::Result<()> {
             post(service::search_points),
         )
         .route("/collections/:name/points", post(service::get_points))
+        .layer(DefaultBodyLimit::disable())
         .with_state(Arc::new(Mutex::new(db)));
 
     let listener = tokio::net::TcpListener::bind(&addr).await?;
