@@ -20,8 +20,8 @@ pub fn create_collections(conn: &Connection, name: &str, size: usize) -> rusqlit
     let sql = format!(
         r#"
         BEGIN;
-        CREATE VIRTUAL TABLE IF NOT EXISTS {} USING vss0(point({}));
-        CREATE TABLE IF NOT EXISTS {}_payload (rowid INTEGER PRIMARY KEY, payload TEXT);
+        CREATE VIRTUAL TABLE IF NOT EXISTS vss_{} USING vss0(point({}));
+        CREATE TABLE IF NOT EXISTS vss_{}_payload (rowid INTEGER PRIMARY KEY, payload TEXT);
         COMMIT;
         "#,
         name, size, name
@@ -32,7 +32,7 @@ pub fn create_collections(conn: &Connection, name: &str, size: usize) -> rusqlit
 pub fn get_collections_info(conn: &Connection, name: &str) -> rusqlite::Result<CollectionsInfo> {
     let sql = format!(
         r#"
-        SELECT COUNT(*) FROM {};
+        SELECT COUNT(*) FROM vss_{};
         "#,
         name
     );
@@ -71,19 +71,19 @@ fn vector_to_blob(vector: &[f32]) -> Vec<u8> {
 
 pub fn add_point(conn: &Connection, name: &str, points: &[Point]) -> rusqlite::Result<Vec<u64>> {
     let mut check_stmt = conn
-        .prepare(&format!("SELECT rowid FROM {} WHERE rowid = ?1", name))
+        .prepare(&format!("SELECT rowid FROM vss_{} WHERE rowid = ?1", name))
         .unwrap();
 
     let mut vector_stmt = conn
         .prepare(&format!(
-            "INSERT INTO {}(rowid,point) VALUES (?1, vector_from_raw(?2))",
+            "INSERT INTO vss_{}(rowid,point) VALUES (?1, vector_from_raw(?2))",
             name
         ))
         .unwrap();
 
     let mut payload_stmt = conn
         .prepare(&format!(
-            "INSERT OR REPLACE INTO {}_payload(rowid,payload) VALUES (?1, ?2)",
+            "INSERT OR REPLACE INTO vss_{}_payload(rowid,payload) VALUES (?1, ?2)",
             name
         ))
         .unwrap();
@@ -120,14 +120,14 @@ pub fn get_points(
 
     let point_sql = format!(
         r#"
-        SELECT rowid,vector_to_raw(point) FROM {} WHERE rowid in ({});
+        SELECT rowid,vector_to_raw(point) FROM vss_{} WHERE rowid in ({});
         "#,
         name, ids
     );
 
     let payload_sql = format!(
         r#"
-        SELECT * FROM {}_payload WHERE rowid in ({});
+        SELECT * FROM vss_{}_payload WHERE rowid in ({});
         "#,
         name, ids
     );
@@ -179,14 +179,14 @@ pub fn get_points(
 pub fn get_point(conn: &Connection, name: &str, id: u64) -> rusqlite::Result<Point> {
     let point_sql = format!(
         r#"
-        SELECT rowid,vector_to_raw(point) FROM {} WHERE rowid = ?1;
+        SELECT rowid,vector_to_raw(point) FROM vss_{} WHERE rowid = ?1;
         "#,
         name
     );
 
     let payload_sql = format!(
         r#"
-        SELECT * FROM {}_payload WHERE rowid = ?1;
+        SELECT * FROM vss_{}_payload WHERE rowid = ?1;
         "#,
         name
     );
@@ -280,7 +280,7 @@ pub fn search_points(
 ) -> rusqlite::Result<Vec<ScoredPoint>> {
     let sql = format!(
         r#"
-        SELECT rowid,vector_to_raw(point),distance FROM {} WHERE vss_search(point,vector_from_raw(?1)) ORDER BY distance LIMIT ?2;
+        SELECT rowid,vector_to_raw(point),distance FROM vss_{} WHERE vss_search(point,vector_from_raw(?1)) ORDER BY distance LIMIT ?2;
         "#,
         name
     );
@@ -315,7 +315,7 @@ pub fn search_points(
 
     let payload_sql = format!(
         r#"
-            SELECT * FROM {}_payload WHERE rowid in ({});
+            SELECT * FROM vss_{}_payload WHERE rowid in ({});
             "#,
         name, ids
     );
@@ -400,8 +400,8 @@ pub fn delete_points(conn: &Connection, name: &str, ids: Vec<u64>) -> rusqlite::
     let sql = format!(
         r#"
         BEGIN;
-        DELETE FROM {} WHERE rowid in ({});
-        DELETE FROM {}_payload WHERE rowid in ({});
+        DELETE FROM vss_{} WHERE rowid in ({});
+        DELETE FROM vss_{}_payload WHERE rowid in ({});
         COMMIT;
         "#,
         name, ids, name, ids
@@ -463,8 +463,8 @@ pub fn delete_collection(conn: &Connection, name: &str) -> rusqlite::Result<()> 
     let sql = format!(
         r#"
         BEGIN;
-        DROP TABLE IF EXISTS {};
-        DROP TABLE IF EXISTS {}_payload;
+        DROP TABLE IF EXISTS vss_{};
+        DROP TABLE IF EXISTS vss_{}_payload;
         COMMIT;
         "#,
         name, name
