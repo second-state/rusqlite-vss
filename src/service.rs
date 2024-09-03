@@ -35,6 +35,7 @@ pub async fn create_collections(
     State(db): State<Arc<Mutex<rusqlite::Connection>>>,
     Json(create_conllections): Json<CreateConllections>,
 ) -> impl IntoResponse {
+    log::info!("Create collection: {}", name);
     let conn = db.lock().await;
     if let Err(e) = store::create_collections(&conn, &name, create_conllections.vectors.size) {
         log::error!("Failed to create collection: {}", e);
@@ -69,6 +70,7 @@ pub async fn get_collections_info(
     Path(name): Path<String>,
     State(db): State<Arc<Mutex<rusqlite::Connection>>>,
 ) -> impl IntoResponse {
+    log::info!("Get collection info: {}", name);
     let conn = db.lock().await;
     match store::get_collections_info(&conn, &name) {
         Ok(info) => (
@@ -114,6 +116,7 @@ pub async fn add_points(
     State(db): State<Arc<Mutex<rusqlite::Connection>>>,
     Json(points): Json<AddPoints>,
 ) -> impl IntoResponse {
+    log::info!("Add points: {}", name);
     {
         let conn = db.lock().await;
         match store::add_point(&conn, &name, &points.points) {
@@ -152,6 +155,7 @@ pub async fn get_points(
     State(db): State<Arc<Mutex<rusqlite::Connection>>>,
     Json(ids): Json<GetPoints>,
 ) -> impl IntoResponse {
+    log::info!("Get points: {}", name);
     let r = {
         let conn = db.lock().await;
         store::get_points(&conn, &name, ids.ids).optional()
@@ -191,6 +195,7 @@ pub async fn get_point(
     Path((name, point_id)): Path<(String, u64)>,
     State(db): State<Arc<Mutex<rusqlite::Connection>>>,
 ) -> impl IntoResponse {
+    log::info!("Get point: {} {}", name, point_id);
     let conn: tokio::sync::MutexGuard<rusqlite::Connection> = db.lock().await;
     let r = store::get_point(&conn, &name, point_id).optional();
     match r {
@@ -245,6 +250,7 @@ pub async fn search_points(
     State(db): State<Arc<Mutex<rusqlite::Connection>>>,
     Json(search): Json<Search>,
 ) -> impl IntoResponse {
+    log::info!("Search points: {}", name);
     let conn = db.lock().await;
     let r = store::search_points(&conn, &name, search.vector.as_slice(), search.limit).optional();
     match r {
@@ -287,6 +293,7 @@ pub async fn delete_points(
     State(db): State<Arc<Mutex<rusqlite::Connection>>>,
     Json(points): Json<DeletePoints>,
 ) -> impl IntoResponse {
+    log::info!("Delete points: {}", name);
     let conn = db.lock().await;
     match store::delete_points(&conn, &name, points.points) {
         Ok(_) => (
@@ -312,6 +319,7 @@ pub async fn delete_collection(
     Path(name): Path<String>,
     State(db): State<Arc<Mutex<rusqlite::Connection>>>,
 ) -> impl IntoResponse {
+    log::info!("Delete collection: {}", name);
     let conn = db.lock().await;
     match store::delete_collection(&conn, &name) {
         Ok(_) => (
